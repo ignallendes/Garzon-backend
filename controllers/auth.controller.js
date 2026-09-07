@@ -10,7 +10,7 @@ export const registrarController = async (req, res) => {
 
     return res.status(201).json(resultado);
   } catch (error) {
-    return { message: `Error en el servidor: ${error.message}` };
+    return res.status(500).json({ message: `Error en el servidor: ${error.message}` });
   }
 };
 

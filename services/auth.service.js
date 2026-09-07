@@ -1,14 +1,16 @@
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-import { JWT_SECRET, JWT_EXPIRA } from '../config/jwt.js'
-import { Usuario } from '../models/usuario.model.js'
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET, JWT_EXPIRA } from '../config/jwt.js';
+import { Usuario } from '../models/usuario.model.js';
 
 // ---------------------------------------------------------------------------
 // SERVICE — Autenticación de BarMonitor
 // ---------------------------------------------------------------------------
 
-export const firmarToken = (id, rol) =>
-  jwt.sign({ id, rol }, JWT_SECRET, { expiresIn: JWT_EXPIRA || '12h' })
+export const firmarToken = (id, rol) => {
+  const secreto = JWT_SECRET || process.env.JWT_SECRET || 'clave_secreta_fallback_barmonitor_12345';
+  return jwt.sign({ id, rol }, secreto, { expiresIn: JWT_EXPIRA || '12h' });
+};
 
 /**
  * Registra un nuevo usuario del sistema (Admin, Caja, Garzon)
@@ -46,7 +48,7 @@ export const registrarUsuario = async (datos) => {
   } catch (error) {
     return { error: `Error en registrarUsuario: ${error.message}` };
   }
-}
+};
 
 /**
  * Inicia sesión para un usuario del bar
@@ -70,7 +72,6 @@ export const login = async (username, password) => {
 
     const token = firmarToken(usuario._id, usuario.rol);
 
-    
     const usuarioObj = usuario.toObject();
     delete usuarioObj.password;
 
@@ -78,4 +79,4 @@ export const login = async (username, password) => {
   } catch (error) {
     return { error: `Error en login: ${error.message}` };
   }
-}
+};
