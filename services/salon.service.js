@@ -1,51 +1,51 @@
 import { Salon } from '../models/salon.model.js';
 import { Mesa } from '../models/mesa.model.js';
 
-/**
- * Crea un nuevo salón.
- */
 export const crearSalonService = async ({ nombre }) => {
-  if (!nombre) {
-    throw new Error('NOMBRE_REQUERIDO');
+  try {
+    if (!nombre || !nombre.trim()) {
+      return { error: 'El nombre del salón es obligatorio' };
+    }
+
+    const salonExistente = await Salon.findOne({ 
+      nombre: { $regex: new RegExp(`^${nombre.trim()}$`, 'i') } 
+    });
+
+    if (salonExistente) {
+      return { error: 'Ya existe un salón con ese nombre' };
+    }
+
+    const nuevoSalon = await Salon.create({ nombre: nombre.trim() });
+    return { salon: nuevoSalon };
+  } catch (error) {
+    return { error: `Error en crearSalonService: ${error.message}` };
   }
-
-  // Mongoose aplica trim: true automáticamente al nombre,
-  // pero verificamos duplicados sin importar mayúsculas/minúsculas.
-  const salonExistente = await Salon.findOne({ 
-    nombre: { $regex: new RegExp(`^${nombre.trim()}$`, 'i') } 
-  });
-
-  if (salonExistente) {
-    throw new Error('SALON_YA_EXISTE');
-  }
-
-  // Mongoose se encarga del trim y de validar la unicidad
-  const nuevoSalon = await Salon.create({ nombre });
-  return nuevoSalon;
 };
 
-/**
- * Obtiene todos los salones.
- */
 export const obtenerSalonesService = async () => {
-  return await Salon.find().sort({ nombre: 1 });
+  try {
+    const salones = await Salon.find().sort({ nombre: 1 });
+    return { salones };
+  } catch (error) {
+    return { error: `Error en obtenerSalonesService: ${error.message}` };
+  }
 };
 
-/**
- * Elimina un salón siempre y cuando no tenga mesas asociadas.
- */
 export const eliminarSalonService = async (salonId) => {
-  const salon = await Salon.findById(salonId);
-  if (!salon) {
-    throw new Error('SALON_NOT_FOUND');
-  }
+  try {
+    const salon = await Salon.findById(salonId);
+    if (!salon) {
+      return { error: 'El salón no existe' };
+    }
 
-  // Regla de Negocio: No se puede eliminar un salón si tiene mesas asociadas
-  const mesasAsociadas = await Mesa.countDocuments({ salon: salonId });
-  if (mesasAsociadas > 0) {
-    throw new Error('SALON_CON_MESAS_NO_ELIMINABLE');
-  }
+    const mesasAsociadas = await Mesa.countDocuments({ salon: salonId });
+    if (mesasAsociadas > 0) {
+      return { error: `No se puede eliminar el salón porque tiene ${mesasAsociadas} mesa(s) asociada(s)` };
+    }
 
-  await Salon.findByIdAndDelete(salonId);
-  return { id: salonId };
+    await Salon.findByIdAndDelete(salonId);
+    return { id: salonId };
+  } catch (error) {
+    return { error: `Error en eliminarSalonService: ${error.message}` };
+  }
 };
