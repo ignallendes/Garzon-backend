@@ -1,5 +1,10 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
+// Forzar a Node.js a resolver SRV usando los servidores DNS de Google
+dns.setDefaultResultOrder('ipv4first');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 dotenv.config();
 
