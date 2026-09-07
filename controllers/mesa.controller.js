@@ -11,7 +11,7 @@ export const crearMesaController = async (req, res) => {
   try {
     const { cantidad, salonId } = req.body;
     
-    // Si envían "cantidad", usamos la creación masiva; si envían 1 por defecto, también funciona
+    // Si envían "cantidad", se crean de forma masiva. De lo contrario, crea 1.
     const resultado = await crearMesasMasivasService(cantidad || 1, salonId);
 
     if (resultado.error) {
@@ -68,6 +68,21 @@ export const cambiarEstadoMesaController = async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('cambio-estado-mesa', resultado.mesa);
+    }
+
+    return res.status(200).json(resultado.mesa);
+  } catch (error) {
+    return res.status(500).json({ message: `Error en el servidor: ${error.message}` });
+  }
+};
+
+export const editarMesaController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const resultado = await editarMesaService(id, req.body);
+
+    if (resultado.error) {
+      return res.status(400).json({ message: resultado.error });
     }
 
     return res.status(200).json(resultado.mesa);

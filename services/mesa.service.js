@@ -2,35 +2,51 @@ import crypto from 'crypto';
 import { Mesa } from '../models/mesa.model.js';
 import { Salon } from '../models/salon.model.js';
 
-export const crearMesaService = async (numero, salonId) => {
+/**
+ * Crea N cantidad de mesas asociadas a un salón, continuando la numeración global.
+ */
+export const crearMesasMasivasService = async (cantidad, salonId) => {
   try {
-    if (!numero || !salonId) {
-      return { error: 'El número de mesa y el salón son obligatorios' };
+    const numMesas = Number(cantidad);
+    if (!numMesas || numMesas <= 0) {
+      return { error: 'La cantidad de mesas debe ser un número mayor a 0' };
+    }
+
+    if (!salonId) {
+      return { error: 'El ID del salón es obligatorio' };
     }
 
     const salonExiste = await Salon.findById(salonId);
     if (!salonExiste) {
-      return { error: 'El salón no existe' };
+      return { error: 'El salón especificado no existe' };
     }
 
-    const mesaExistente = await Mesa.findOne({ numero, salon: salonId });
-    if (mesaExistente) {
-      return { error: 'Ya existe una mesa con ese número en este salón' };
+    // Buscar el número de mesa más alto registrado en todo el sistema
+    const ultimaMesa = await Mesa.findOne().sort({ numero: -1 }).select('numero');
+    const ultimoNumero = ultimaMesa ? ultimaMesa.numero : 0;
+
+    const nuevasMesas = [];
+    for (let i = 1; i <= numMesas; i++) {
+      nuevasMesas.push({
+        numero: ultimoNumero + i, // Continúa correlativamente (ej: 101, 102...)
+        salon: salonId,
+        qr_token: crypto.randomBytes(16).toString('hex'),
+        estado: 'Libre'
+      });
     }
 
-    const qr_token = crypto.randomBytes(16).toString('hex');
+    // Inserción masiva optimizada
+    const mesasCreadas = await Mesa.insertMany(nuevasMesas);
 
-    const nuevaMesa = await Mesa.create({
-      numero,
-      salon: salonId,
-      qr_token,
-      estado: 'Libre'
-    });
-
-    const mesaCreada = await nuevaMesa.populate('salon');
-    return { mesa: mesaCreada };
+    return {
+      mensaje: `Se crearon ${mesasCreadas.length} mesas exitosamente.`,
+      mesas: mesasCreadas
+    };
   } catch (error) {
-    return { error: `Error en crearMesaService: ${error.message}` };
+    if (error.code === 11000) {
+      return { error: 'Error de duplicidad: Ya existe una mesa con ese número o token.' };
+    }
+    return { error: `Error en crearMesasMasivasService: ${error.message}` };
   }
 };
 

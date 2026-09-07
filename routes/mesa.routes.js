@@ -1,4 +1,3 @@
-// routes/mesa.routes.js
 import { Router } from 'express';
 import { proteger, soloRol } from '../middlewares/proteger.js';
 import {
@@ -6,6 +5,7 @@ import {
   obtenerMesasPorSalonController,
   obtenerMesaPorTokenController,
   cambiarEstadoMesaController,
+  editarMesaController,
   eliminarMesaController
 } from '../controllers/mesa.controller.js';
 
@@ -17,6 +17,7 @@ router.get('/qr/:qr_token', obtenerMesaPorTokenController);
 // PROTEGIDAS: Solo personal autorizado
 router.get('/salon/:salonId', proteger, obtenerMesasPorSalonController);
 router.post('/', proteger, soloRol('Admin'), crearMesaController);
+router.put('/:id', proteger, soloRol('Admin'), editarMesaController);
 router.patch('/:id/estado', proteger, soloRol('Admin', 'Caja', 'Garzon'), cambiarEstadoMesaController);
 router.delete('/:id', proteger, soloRol('Admin'), eliminarMesaController);
 
