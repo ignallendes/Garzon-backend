@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { proteger, soloRol } from '../middlewares/proteger.js';
 import {
   crearSalonController,
   obtenerSalonesController,
