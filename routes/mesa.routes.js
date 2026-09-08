@@ -15,7 +15,7 @@ const router = Router();
 router.get('/qr/:qr_token', obtenerMesaPorTokenController);
 
 // PROTEGIDAS: Solo personal autorizado
-router.get('/salon/:salonId', proteger, obtenerMesasPorSalonController);
+router.get('/:salonId', proteger, obtenerMesasPorSalonController);
 router.post('/', proteger, soloRol('Admin'), crearMesaController);
 router.put('/:id', proteger, soloRol('Admin'), editarMesaController);
 router.patch('/:id/estado', proteger, soloRol('Admin', 'Caja', 'Garzon'), cambiarEstadoMesaController);
