@@ -1,3 +1,4 @@
+// controllers/mesa.controller.js
 import {
   crearMesasMasivasService,
   obtenerMesasPorSalonService,
@@ -11,14 +12,17 @@ export const crearMesaController = async (req, res) => {
   try {
     const { cantidad, salonId } = req.body;
     
-    // Si envían "cantidad", se crean de forma masiva. De lo contrario, crea 1.
+    // Si no especifican cantidad, por defecto crea 1 mesa
     const resultado = await crearMesasMasivasService(cantidad || 1, salonId);
 
     if (resultado.error) {
       return res.status(400).json({ message: resultado.error });
     }
 
-    return res.status(201).json(resultado);
+    return res.status(201).json({
+      message: resultado.mensaje,
+      mesas: resultado.mesas
+    });
   } catch (error) {
     return res.status(500).json({ message: `Error en el servidor: ${error.message}` });
   }
@@ -33,7 +37,7 @@ export const obtenerMesasPorSalonController = async (req, res) => {
       return res.status(404).json({ message: resultado.error });
     }
 
-    return res.status(200).json(resultado.mesas);
+    return res.status(200).json({ mesas: resultado.mesas });
   } catch (error) {
     return res.status(500).json({ message: `Error en el servidor: ${error.message}` });
   }
@@ -48,7 +52,7 @@ export const obtenerMesaPorTokenController = async (req, res) => {
       return res.status(404).json({ message: resultado.error });
     }
 
-    return res.status(200).json(resultado.mesa);
+    return res.status(200).json({ mesa: resultado.mesa });
   } catch (error) {
     return res.status(500).json({ message: `Error en el servidor: ${error.message}` });
   }
@@ -70,7 +74,7 @@ export const cambiarEstadoMesaController = async (req, res) => {
       io.emit('cambio-estado-mesa', resultado.mesa);
     }
 
-    return res.status(200).json(resultado.mesa);
+    return res.status(200).json({ mesa: resultado.mesa });
   } catch (error) {
     return res.status(500).json({ message: `Error en el servidor: ${error.message}` });
   }
@@ -85,7 +89,7 @@ export const editarMesaController = async (req, res) => {
       return res.status(400).json({ message: resultado.error });
     }
 
-    return res.status(200).json(resultado.mesa);
+    return res.status(200).json({ mesa: resultado.mesa });
   } catch (error) {
     return res.status(500).json({ message: `Error en el servidor: ${error.message}` });
   }
