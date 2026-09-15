@@ -36,6 +36,58 @@ export const crearSolicitudService = async ({ mesaId, tipo }) => {
   }
 };
 
+export const crearSolicitudPorTokenService = async ({ qr_token, tipo }) => {
+  try {
+    if (!qr_token) {
+      return { error: 'Mesa no encontrada o código QR inválido.' };
+    }
+
+    if (!['Solicitada', 'Cuenta'].includes(tipo)) {
+      return { error: "El tipo de solicitud debe ser 'Solicitada' o 'Cuenta'." };
+    }
+
+    // Buscamos la mesa y traemos la referencia completa del salón
+    const mesa = await Mesa.findOne({ qr_token }).populate('salon');
+    if (!mesa) {
+      return { error: 'Mesa no encontrada o código QR inválido.' };
+    }
+
+    if (!mesa.salon) {
+      return { error: 'La mesa no tiene un salón asignado en la base de datos.' };
+    }
+
+    const solicitud = await Solicitud.create({
+      mesa: mesa._id,
+      salon: mesa.salon._id, // Asignamos explícitamente el ID del salón
+      tipo,
+      atendida: false
+    });
+
+    if (mesa.estado === 'Libre') {
+      mesa.estado = 'Ocupada';
+      await mesa.save();
+    }
+
+    // Poblamos la solicitud antes de enviarla a Socket.io / respuesta HTTP
+    const solicitudPoblada = await solicitud.populate(['mesa', 'salon']);
+
+    return { solicitud: solicitudPoblada, mesa };
+  } catch (error) {
+    return { error: `Error en crearSolicitudPorTokenService: ${error.message}` };
+  }
+};
+
+export const obtenerSolicitudesPendientesService = async () => {
+  try {
+    const solicitudes = await Solicitud.find({ atendida: false })
+      .populate(['mesa', 'salon']);
+
+    return { solicitudes };
+  } catch (error) {
+    return { error: `Error al obtener solicitudes pendientes: ${error.message}` };
+  }
+};
+
 export const atenderSolicitudService = async (solicitudId) => {
   try {
     const solicitud = await Solicitud.findById(solicitudId);

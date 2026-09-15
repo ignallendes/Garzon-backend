@@ -14,7 +14,7 @@ const solicitudSchema = new mongoose.Schema(
     },
     tipo: {
       type: String,
-      enum: ['Solicitada', 'Cuenta'], // Corregido typo 'Solicitada'
+      enum: ['Solicitada', 'Cuenta'], 
       required: true,
     },
     fecha_Solicitud: {
