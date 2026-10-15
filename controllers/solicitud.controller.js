@@ -1,4 +1,9 @@
-import { crearSolicitudService, atenderSolicitudService } from '../services/solicitud.service.js';
+import {
+  crearSolicitudService,
+  crearSolicitudPorTokenService,
+  obtenerSolicitudesPendientesService,
+  atenderSolicitudService
+} from '../services/solicitud.service.js';
 
 export const crearSolicitudController = async (req, res) => {
   try {
@@ -24,6 +29,47 @@ export const crearSolicitudController = async (req, res) => {
     }
 
     return res.status(201).json(resultado.solicitud);
+  } catch (error) {
+    return res.status(500).json({ message: `Error interno del servidor: ${error.message}` });
+  }
+};
+
+export const crearSolicitudClienteController = async (req, res) => {
+  try {
+    console.log('📩 Petición recibida desde QR cliente:', req.body);
+
+    const { qr_token, tipo } = req.body;
+    const resultado = await crearSolicitudPorTokenService({ qr_token, tipo });
+
+    if (resultado.error) {
+      console.error('❌ Error procesando solicitud:', resultado.error);
+      return res.status(400).json({ message: resultado.error });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      console.log('⚡ Emitiendo evento Socket.io: nueva-solicitud');
+      io.emit('nueva-solicitud', resultado.solicitud);
+      io.emit('cambio-estado-mesa', resultado.mesa);
+    }
+
+    console.log('✅ Solicitud creada exitosamente ID:', resultado.solicitud._id);
+    return res.status(201).json(resultado.solicitud);
+  } catch (error) {
+    console.error('🔥 Error crítico en controlador:', error.message);
+    return res.status(500).json({ message: `Error interno del servidor: ${error.message}` });
+  }
+};
+
+export const obtenerSolicitudesPendientesController = async (req, res) => {
+  try {
+    const resultado = await obtenerSolicitudesPendientesService();
+
+    if (resultado.error) {
+      return res.status(500).json({ message: resultado.error });
+    }
+
+    return res.status(200).json(resultado.solicitudes);
   } catch (error) {
     return res.status(500).json({ message: `Error interno del servidor: ${error.message}` });
   }

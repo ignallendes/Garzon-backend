@@ -1,36 +1,53 @@
+// services/mesa.service.js
 import crypto from 'crypto';
 import { Mesa } from '../models/mesa.model.js';
 import { Salon } from '../models/salon.model.js';
 
-export const crearMesaService = async (numero, salonId) => {
+/**
+ * Crea N mesas asociadas a un salón, continuando la numeración GLOBAL.
+ */
+export const crearMesasMasivasService = async (cantidad, salonId) => {
   try {
-    if (!numero || !salonId) {
-      return { error: 'El número de mesa y el salón son obligatorios' };
+    const numMesas = Number(cantidad);
+    if (!numMesas || numMesas <= 0) {
+      return { error: 'La cantidad de mesas debe ser un número mayor a 0' };
+    }
+
+    if (!salonId) {
+      return { error: 'El ID del salón es obligatorio' };
     }
 
     const salonExiste = await Salon.findById(salonId);
     if (!salonExiste) {
-      return { error: 'El salón no existe' };
+      return { error: 'El salón especificado no existe' };
     }
 
-    const mesaExistente = await Mesa.findOne({ numero, salon: salonId });
-    if (mesaExistente) {
-      return { error: 'Ya existe una mesa con ese número en este salón' };
+    // Buscar el número de mesa más alto registrado EN TODO EL RESTAURANTE
+    const ultimaMesa = await Mesa.findOne().sort({ numero: -1 }).select('numero');
+    const ultimoNumero = ultimaMesa ? ultimaMesa.numero : 0;
+
+    const nuevasMesas = [];
+    for (let i = 1; i <= numMesas; i++) {
+      nuevasMesas.push({
+        numero: ultimoNumero + i, // Continúa correlativamente global (ej: 1, 2, 3...)
+        salon: salonId,
+        qr_token: crypto.randomBytes(16).toString('hex'),
+        estado: 'Libre'
+      });
     }
 
-    const qr_token = crypto.randomBytes(16).toString('hex');
+    // Inserción masiva optimizada
+    const mesasCreadas = await Mesa.insertMany(nuevasMesas);
 
-    const nuevaMesa = await Mesa.create({
-      numero,
-      salon: salonId,
-      qr_token,
-      estado: 'Libre'
-    });
-
-    const mesaCreada = await nuevaMesa.populate('salon');
-    return { mesa: mesaCreada };
+    return {
+      mensaje: `Se crearon ${mesasCreadas.length} mesas exitosamente en ${salonExiste.nombre}.`,
+      mesas: mesasCreadas
+    };
   } catch (error) {
-    return { error: `Error en crearMesaService: ${error.message}` };
+    if (error.code === 11000) {
+      return { error: 'Error de duplicidad: Ya existe una mesa con ese número o token en el restaurante.' };
+    }
+    return { error: `Error en crearMesasMasivasService: ${error.message}` };
   }
 };
 
@@ -42,7 +59,7 @@ export const obtenerMesasPorSalonService = async (salonId) => {
     }
 
     const mesas = await Mesa.find({ salon: salonId })
-      .populate('salon')
+      .populate('salon', 'nombre')
       .sort({ numero: 1 });
 
     return { mesas };
@@ -57,7 +74,7 @@ export const obtenerMesaPorTokenService = async (qr_token) => {
       return { error: 'Se requiere el token del código QR' };
     }
 
-    const mesa = await Mesa.findOne({ qr_token }).populate('salon');
+    const mesa = await Mesa.findOne({ qr_token }).populate('salon', 'nombre');
     if (!mesa) {
       return { error: 'El código QR es inválido o no corresponde a una mesa' };
     }
@@ -79,7 +96,7 @@ export const cambiarEstadoMesaService = async (mesaId, nuevoEstado) => {
       mesaId,
       { estado: nuevoEstado },
       { new: true }
-    ).populate('salon');
+    ).populate('salon', 'nombre');
 
     if (!mesaActualizada) {
       return { error: 'La mesa no existe' };
@@ -93,11 +110,27 @@ export const cambiarEstadoMesaService = async (mesaId, nuevoEstado) => {
 
 export const editarMesaService = async (id, datos) => {
   try {
+    // Si intenta cambiar el número de mesa, verificar que no esté ocupado globalmente por otra
+    if (datos.numero) {
+      const mesaConNumero = await Mesa.findOne({ numero: datos.numero, _id: { $ne: id } });
+      if (mesaConNumero) {
+        return { error: `El número de mesa ${datos.numero} ya está registrado en el sistema.` };
+      }
+    }
+
+    // Si intenta mover la mesa a otro salón, validar que el nuevo salón exista
+    if (datos.salon) {
+      const salonExiste = await Salon.findById(datos.salon);
+      if (!salonExiste) {
+        return { error: 'El salón asignado no existe' };
+      }
+    }
+
     const mesaEditada = await Mesa.findByIdAndUpdate(
       id,
       datos,
-      { new: true }
-    ).populate('salon');
+      { new: true, runValidators: true }
+    ).populate('salon', 'nombre');
 
     if (!mesaEditada) {
       return { error: 'La mesa no existe' };
@@ -105,18 +138,27 @@ export const editarMesaService = async (id, datos) => {
 
     return { mesa: mesaEditada };
   } catch (error) {
+    if (error.code === 11000) {
+      return { error: 'Error de duplicidad: El número o token ya está registrado.' };
+    }
     return { error: `Error en editarMesaService: ${error.message}` };
   }
 };
 
 export const eliminarMesaService = async (mesaId) => {
   try {
-    const mesa = await Mesa.findByIdAndDelete(mesaId);
-    if (!mesa) {
+    // Regla de seguridad opcional: No eliminar si la mesa está ocupada
+    const mesaExistente = await Mesa.findById(mesaId);
+    if (!mesaExistente) {
       return { error: 'La mesa no existe' };
     }
 
-    return { eliminado: mesa };
+    if (mesaExistente.estado !== 'Libre') {
+      return { error: `No se puede eliminar la mesa #${mesaExistente.numero} porque su estado es '${mesaExistente.estado}'.` };
+    }
+
+    const mesaEliminada = await Mesa.findByIdAndDelete(mesaId);
+    return { eliminado: mesaEliminada };
   } catch (error) {
     return { error: `Error en eliminarMesaService: ${error.message}` };
   }

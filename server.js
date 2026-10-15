@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.routes.js';
 import salonRoutes from './routes/salon.routes.js';
 import mesaRoutes from './routes/mesa.routes.js';
 import solicitudRoutes from './routes/solicitud.routes.js';
+import usuarioRoutes from './routes/usuario.routes.js';
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/salones', salonRoutes);
 app.use('/api/mesas', mesaRoutes);
 app.use('/api/solicitudes', solicitudRoutes);
+app.use('/api/usuarios', usuarioRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: '¡API BarMonitor V1.0 funcionando!' });

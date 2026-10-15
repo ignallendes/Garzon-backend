@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { proteger, soloRol } from '../middlewares/proteger.js';
 import {
   crearSalonController,
   obtenerSalonesController,
@@ -7,8 +8,8 @@ import {
 
 const router = Router();
 
-router.post('/', crearSalonController);
-router.get('/', obtenerSalonesController);
-router.delete('/:id', eliminarSalonController);
+router.get('/', proteger, obtenerSalonesController);
+router.post('/', proteger, soloRol('Admin'), crearSalonController);
+router.delete('/:id', proteger, soloRol('Admin'), eliminarSalonController);
 
 export default router;
